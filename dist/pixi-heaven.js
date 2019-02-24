@@ -2501,6 +2501,7 @@ var pixi_heaven;
             this.darkRgba = 0;
             this.lightRgba = -1;
             this.hasNoTint = true;
+            this.hue = 0;
         }
         Object.defineProperty(ColorTransform.prototype, "darkR", {
             get: function () {
@@ -2905,38 +2906,35 @@ var pixi_heaven;
         __extends(SpriteHeavenRenderer, _super);
         function SpriteHeavenRenderer() {
             var _this = _super !== null && _super.apply(this, arguments) || this;
-            _this.shaderVert = "precision highp float;\nattribute vec2 aVertexPosition;\nattribute vec2 aTextureCoord;\nattribute vec4 aLight, aDark;\nattribute float aTextureId;\n\nuniform mat3 projectionMatrix;\n\nvarying vec2 vTextureCoord;\nvarying vec4 vLight, vDark;\nvarying float vTextureId;\n\nvoid main(void){\n    gl_Position.xyw = projectionMatrix * vec3(aVertexPosition, 1.0);\n    gl_Position.z = 0.0;\n    \n    vTextureCoord = aTextureCoord;\n    vTextureId = aTextureId;\n    vLight = aLight;\n    vDark = aDark;\n}\n";
-            _this.shaderFrag = "\nvarying vec2 vTextureCoord;\nvarying vec4 vLight, vDark;\nvarying float vTextureId;\nuniform sampler2D uSamplers[%count%];\n\nvec3 hueShift( vec3 color, float hueAdjust ){\n\n\tconst vec3  kRGBToYPrime = vec3 (0.299, 0.587, 0.114);\n\tconst vec3  kRGBToI      = vec3 (0.596, -0.275, -0.321);\n\tconst vec3  kRGBToQ      = vec3 (0.212, -0.523, 0.311);\n\n\tconst vec3  kYIQToR     = vec3 (1.0, 0.956, 0.621);\n\tconst vec3  kYIQToG     = vec3 (1.0, -0.272, -0.647);\n\tconst vec3  kYIQToB     = vec3 (1.0, -1.107, 1.704);\n\n\tfloat   YPrime  = dot (color, kRGBToYPrime);\n\tfloat   I       = dot (color, kRGBToI);\n\tfloat   Q       = dot (color, kRGBToQ);\n\tfloat   hue     = atan (Q, I);\n\tfloat   chroma  = sqrt (I * I + Q * Q);\n\n\thue += hueAdjust;\n\n\tQ = chroma * sin (hue);\n\tI = chroma * cos (hue);\n\n\tvec3    yIQ   = vec3 (YPrime, I, Q);\n\n\treturn vec3( dot (yIQ, kYIQToR), dot (yIQ, kYIQToG), dot (yIQ, kYIQToB) );\n\n}\n\nvoid main(void) {\nvec4 texColor;\nvec2 texCoord = vTextureCoord;\nfloat textureId = floor(vTextureId+0.5);\n%forloop%\ngl_FragColor = vec4(hueShift(texColor.rgb, vLight.r), texColor.a);\n}";
+            _this.shaderVert = "precision highp float;\nattribute vec2 aVertexPosition;\nattribute vec2 aTextureCoord;\nattribute float aHue;\nattribute float aTextureId;\n\nuniform mat3 projectionMatrix;\n\nvarying vec2 vTextureCoord;\nvarying float vHue;\nvarying float vTextureId;\n\nvoid main(void){\n    gl_Position.xyw = projectionMatrix * vec3(aVertexPosition, 1.0);\n    gl_Position.z = 0.0;\n    \n    vTextureCoord = aTextureCoord;\n    vTextureId = aTextureId;\n    vHue = aHue;\n}\n";
+            _this.shaderFrag = "\nvarying vec2 vTextureCoord;\nvarying float vHue;\nvarying float vTextureId;\nuniform sampler2D uSamplers[%count%];\n\nvec3 hueShift( vec3 color, float hueAdjust ){\n\n\tconst vec3  kRGBToYPrime = vec3 (0.299, 0.587, 0.114);\n\tconst vec3  kRGBToI      = vec3 (0.596, -0.275, -0.321);\n\tconst vec3  kRGBToQ      = vec3 (0.212, -0.523, 0.311);\n\n\tconst vec3  kYIQToR     = vec3 (1.0, 0.956, 0.621);\n\tconst vec3  kYIQToG     = vec3 (1.0, -0.272, -0.647);\n\tconst vec3  kYIQToB     = vec3 (1.0, -1.107, 1.704);\n\n\tfloat   YPrime  = dot (color, kRGBToYPrime);\n\tfloat   I       = dot (color, kRGBToI);\n\tfloat   Q       = dot (color, kRGBToQ);\n\tfloat   hue     = atan (Q, I);\n\tfloat   chroma  = sqrt (I * I + Q * Q);\n\n\thue += hueAdjust;\n\n\tQ = chroma * sin (hue);\n\tI = chroma * cos (hue);\n\n\tvec3    yIQ   = vec3 (YPrime, I, Q);\n\n\treturn vec3( dot (yIQ, kYIQToR), dot (yIQ, kYIQToG), dot (yIQ, kYIQToB) );\n\n}\n\nvoid main(void) {\nvec4 texColor;\nvec2 texCoord = vTextureCoord;\nfloat textureId = floor(vTextureId+0.5);\n%forloop%\ngl_FragColor = vec4(hueShift(texColor.rgb, vHue), texColor.a);\n}";
             return _this;
         }
         SpriteHeavenRenderer.prototype.createVao = function (vertexBuffer) {
             var attrs = this.shader.attributes;
-            this.vertSize = attrs.aTextureId ? 6 : 5;
+            this.vertSize = attrs.aTextureId ? 5 : 4;
             this.vertByteSize = this.vertSize * 4;
             var gl = this.renderer.gl;
             var vao = this.renderer.createVao()
                 .addIndex(this.indexBuffer)
                 .addAttribute(vertexBuffer, attrs.aVertexPosition, gl.FLOAT, false, this.vertByteSize, 0)
                 .addAttribute(vertexBuffer, attrs.aTextureCoord, gl.UNSIGNED_SHORT, true, this.vertByteSize, 2 * 4)
-                .addAttribute(vertexBuffer, attrs.aLight, gl.UNSIGNED_BYTE, true, this.vertByteSize, 3 * 4)
-                .addAttribute(vertexBuffer, attrs.aDark, gl.UNSIGNED_BYTE, true, this.vertByteSize, 4 * 4);
+                .addAttribute(vertexBuffer, attrs.aHue, gl.FLOAT, false, this.vertByteSize, 3 * 4);
             if (attrs.aTextureId) {
-                vao.addAttribute(vertexBuffer, attrs.aTextureId, gl.FLOAT, false, this.vertByteSize, 5 * 4);
+                vao.addAttribute(vertexBuffer, attrs.aTextureId, gl.FLOAT, false, this.vertByteSize, 4 * 4);
             }
             return vao;
         };
         SpriteHeavenRenderer.prototype.fillVertices = function (float32View, uint32View, index, sprite, textureId) {
             var vertexData = sprite.vertexData;
             var n = vertexData.length;
-            var lightRgba = sprite.color.lightRgba;
-            var darkRgba = sprite.color.darkRgba;
+            var hue = sprite.color.hue;
             var stride = this.vertSize;
             var oldIndex = index;
             for (var i = 0; i < n; i += 2) {
                 float32View[index] = vertexData[i];
                 float32View[index + 1] = vertexData[i + 1];
-                uint32View[index + 3] = lightRgba;
-                uint32View[index + 4] = darkRgba;
+                float32View[index + 3] = hue;
                 index += stride;
             }
             var uvs = sprite.uvs;
@@ -2955,8 +2953,8 @@ var pixi_heaven;
                     index += stride;
                 }
             }
-            if (stride === 6) {
-                index = oldIndex + 5;
+            if (stride === 5) {
+                index = oldIndex + 4;
                 for (var i = 0; i < n; i += 2) {
                     float32View[index] = textureId;
                     index += stride;

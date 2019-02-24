@@ -13,6 +13,8 @@ namespace pixi_heaven {
 		lightRgba: number = -1;
 		hasNoTint: boolean = true;
 
+		hue: number = 0;
+
 		get darkR() {
 			return this.dark[0];
 		}

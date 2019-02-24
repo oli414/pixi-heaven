@@ -507,6 +507,7 @@ declare module PIXI.heaven {
         darkRgba: number;
         lightRgba: number;
         hasNoTint: boolean;
+        hue: number;
         darkR: number;
         darkG: number;
         darkB: number;

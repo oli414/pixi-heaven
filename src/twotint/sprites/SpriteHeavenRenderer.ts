@@ -6,13 +6,13 @@ namespace pixi_heaven {
 			`precision highp float;
 attribute vec2 aVertexPosition;
 attribute vec2 aTextureCoord;
-attribute vec4 aLight, aDark;
+attribute float aHue;
 attribute float aTextureId;
 
 uniform mat3 projectionMatrix;
 
 varying vec2 vTextureCoord;
-varying vec4 vLight, vDark;
+varying float vHue;
 varying float vTextureId;
 
 void main(void){
@@ -21,13 +21,12 @@ void main(void){
     
     vTextureCoord = aTextureCoord;
     vTextureId = aTextureId;
-    vLight = aLight;
-    vDark = aDark;
+    vHue = aHue;
 }
 `;
 		shaderFrag = `
 varying vec2 vTextureCoord;
-varying vec4 vLight, vDark;
+varying float vHue;
 varying float vTextureId;
 uniform sampler2D uSamplers[%count%];
 
@@ -63,12 +62,12 @@ vec4 texColor;
 vec2 texCoord = vTextureCoord;
 float textureId = floor(vTextureId+0.5);
 %forloop%
-gl_FragColor = vec4(hueShift(texColor.rgb, vLight.r), texColor.a);
+gl_FragColor = vec4(hueShift(texColor.rgb, vHue), texColor.a);
 }`;
 
 		createVao(vertexBuffer: PIXI.glCore.GLBuffer) {
 			const attrs = this.shader.attributes;
-			this.vertSize = attrs.aTextureId ? 6 : 5;
+			this.vertSize = attrs.aTextureId ? 5 : 4;
 			this.vertByteSize = this.vertSize * 4;
 
 
@@ -77,11 +76,10 @@ gl_FragColor = vec4(hueShift(texColor.rgb, vLight.r), texColor.a);
 				.addIndex(this.indexBuffer)
 				.addAttribute(vertexBuffer, attrs.aVertexPosition, gl.FLOAT, false, this.vertByteSize, 0)
 				.addAttribute(vertexBuffer, attrs.aTextureCoord, gl.UNSIGNED_SHORT, true, this.vertByteSize, 2 * 4)
-				.addAttribute(vertexBuffer, attrs.aLight, gl.UNSIGNED_BYTE, true, this.vertByteSize, 3 * 4)
-				.addAttribute(vertexBuffer, attrs.aDark, gl.UNSIGNED_BYTE, true, this.vertByteSize, 4 * 4);
+				.addAttribute(vertexBuffer, attrs.aHue, gl.FLOAT, false, this.vertByteSize, 3 * 4);
 
 			if (attrs.aTextureId) {
-				vao.addAttribute(vertexBuffer, attrs.aTextureId, gl.FLOAT, false, this.vertByteSize, 5 * 4);
+				vao.addAttribute(vertexBuffer, attrs.aTextureId, gl.FLOAT, false, this.vertByteSize, 4 * 4);
 			}
 
 			return vao;
@@ -94,16 +92,14 @@ gl_FragColor = vec4(hueShift(texColor.rgb, vLight.r), texColor.a);
 
 			const n = vertexData.length;
 
-			const lightRgba = sprite.color.lightRgba;
-			const darkRgba = sprite.color.darkRgba;
+			const hue = sprite.color.hue;
 			const stride = this.vertSize;
 			const oldIndex = index;
 
 			for (let i = 0; i < n; i += 2) {
 				float32View[index] = vertexData[i];
 				float32View[index + 1] = vertexData[i + 1];
-				uint32View[index + 3] = lightRgba;
-				uint32View[index + 4] = darkRgba;
+				float32View[index + 3] = hue;
 				index += stride;
 			}
 
@@ -123,8 +119,8 @@ gl_FragColor = vec4(hueShift(texColor.rgb, vLight.r), texColor.a);
 				}
 			}
 
-			if (stride === 6) {
-				index = oldIndex + 5;
+			if (stride === 5) {
+				index = oldIndex + 4;
 				for (let i = 0; i < n; i += 2) {
 					float32View[index] = textureId;
 					index += stride;
